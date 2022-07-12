@@ -4,7 +4,9 @@ import './App.css';
 import Logo from './components/logo/Logo';
 import ImageLinkForm from './components/imageLink/ImageLinkForm';
 import Rank from './components/rank/Rank';
-import FaceRecognition from './components/FaceRecognition/faceRecog';
+import FaceRecognition from './components/faceRecognition/FaceRecog';
+import SignIn from './components/signIn/SignIn';
+import Register from './components/register/Register';
 //import Particles from 'react-tsparticles';
 import Clarifai from 'clarifai';
 
@@ -42,8 +44,29 @@ class App extends Component {
     super();
     this.state = {
       input: '',
-      imageUrl: ''
+      imageUrl: '',
+      box: {},
+      route: 'signin',
+      isSignedIn: false
     }
+  }
+
+  calculateFaceLocation = (data) => {
+    const clarifaiFace = JSON.parse(data, null, 2).outputs[0].data.regions[0]
+      .region_info.bounding_box;
+    const image = document.getElementById("inputimage");
+    const width = Number(image.width);
+    const height = Number(image.height);
+    return {
+      leftCol: clarifaiFace.left_col * width,
+      topRow: clarifaiFace.top_row * height,
+      rightCol: width - (clarifaiFace.right_col * width),
+      bottomRow: height - (clarifaiFace.bottom_row * height),
+    };
+  }
+
+  displayFaceBox = (box) => {
+    this.setState({ box: box })
   }
 
   onInputChange = (event) => {
@@ -57,7 +80,8 @@ class App extends Component {
     const raw = JSON.stringify({
       user_app_id: {
         user_id: "u2rce7hm32b9",
-        app_id: "d5b45b04daf14b128cb8106f8688a1a3"
+        //app_id: "d5b45b04daf14b128cb8106f8688a1a3"
+        app_id: "c602f82c3a1c459e8ac365e3cd050738"
       },
       inputs: [
         {
@@ -71,7 +95,7 @@ class App extends Component {
     });
 
     fetch(
-      "https://api.clarifai.com/v2/models/f76196b43bbd45c99b4f3cd8e8b40a8a/outputs",
+      "https://api.clarifai.com/v2/models/a403429f2ddf4b49b307e318f00e528b/outputs",
       {
         method: "POST",
         headers: {
@@ -101,31 +125,33 @@ class App extends Component {
       .catch((error) => console.log('error', error));
   }
 
-  calculateFaceLocation = (data) => {
-    const clarifaiFace = JSON.parse(data, null, 2).outputs[0].data.regions[0]
-      .region_info.bounding_box;
-    const image = document.getElementById("inputimage");
-    const width = Number(image.width);
-    const height = Number(image.height);
-    return {
-      leftCol: clarifaiFace.left_col * width,
-      topRow: clarifaiFace.top_row * height,
-      rightCol: width - clarifaiFace.right_col * width,
-      bottomRow: height - clarifaiFace.bottom_row * height,
-    };
+  onRouteChange = (route) => {
+    if(route === 'signout'){
+      this.setState({isSignedIn: false})
+    } else if(route === 'home'){
+      this.setState({isSignedIn: true})
+    }
+    this.setState({route: route});
   }
-
 
 
   render() {
     return (
       <div className="App">
         {/* <Particles params={particlesOptions} /> */}
-        <Navigation />
-        <Logo />
-        <Rank />
-        <ImageLinkForm onInputChange={this.onInputChange} onSubmit={this.onSubmit} />
-        <FaceRecognition imageUrl={this.state.imageUrl} />
+        <Navigation isSignedIn={this.state.isSignedIn} onRouteChange={this.onRouteChange}/>
+        {this.state.route === 'home'
+          ? <div>
+              <Logo />
+              <Rank />
+              <ImageLinkForm onInputChange={this.onInputChange} onSubmit={this.onSubmit} />
+              <FaceRecognition box={this.state.box} imageUrl={this.state.imageUrl} />
+            </div>
+          : ( this.state.route === 'signin'
+            ? <SignIn onRouteChange={this.onRouteChange} />
+            : <Register onRouteChange={this.onRouteChange} />
+          )
+        }
       </div>
     );
   }
